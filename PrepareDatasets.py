@@ -12,7 +12,8 @@ DATASETS = {
     'NCI1': NCI1,
     'ENZYMES': Enzymes,
     'PROTEINS': Proteins,
-    'DD': DD
+    'DD': DD,
+    "MUTAG": Mutag
 }
 
 
@@ -31,6 +32,18 @@ def get_args_dict():
                         default=False, help='use 1 as feature')
     parser.add_argument('--use-degree', dest='use_node_degree', action='store_true',
                         default=False, help='use degree as feature')
+    parser.add_argument('--use-shared', dest='use_shared', action='store_true',
+                        default=False, help='use shared vector as feature')
+    parser.add_argument('--use-1hot', dest='use_1hot', action='store_true',
+                        default=False, help='use 1hot vector as feature')
+    parser.add_argument('--use-random-normal', dest='use_random_normal', action='store_true',
+                        default=False, help='use randomly initializatied vector as feature')
+    parser.add_argument('--use-pagerank', dest='use_pagerank', action='store_true',
+                        default=False, help='use pagerank value as feature')
+    parser.add_argument('--use-eigen', dest='use_eigen', action='store_true',
+                        default=False, help='use eigen vectors as feature')
+    parser.add_argument('--use-deepwalk', dest='use_deepwalk', action='store_true',
+                        default=False, help='use deepwalk embeddings as feature')
     parser.add_argument('--no-kron', dest='precompute_kron_indices', action='store_false',
                         default=True, help='don\'t precompute kron reductions')
 
@@ -46,7 +59,6 @@ def preprocess_dataset(name, args_dict):
 
 if __name__ == "__main__":
     args_dict = get_args_dict()
-
     print(args_dict)
 
     dataset_name = args_dict.pop('dataset_name')

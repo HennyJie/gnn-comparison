@@ -30,11 +30,15 @@ class Graph(nx.Graph):
             features.append(data)
         return torch.Tensor(features)
 
-    def get_x(self, use_node_attrs=False, use_node_degree=False, use_one=False):
+    def get_x(self, use_node_attrs=False, use_node_degree=False, use_one=False, use_shared=False, use_1hot=False, use_random_normal=False, use_pagerank=False, use_eigen=False, use_deepwalk=False, embedding=None):
         features = []
+
+        # pagerank = {}
+        # if use_pagerank:
+        #     pagerank = nx.pagerank(self)
+
         for node, node_attrs in self.nodes(data=True):
             data = []
-
             if node_attrs["label"] is not None:
                 data.extend(node_attrs["label"])
 
@@ -47,8 +51,28 @@ class Graph(nx.Graph):
             if use_one:
                 data.extend([1])
             
+            if use_shared:
+                data.extend([1] * 50)
+            
+            if use_1hot:
+                arr = embedding(torch.LongTensor([node-1]))
+                data.extend(list(arr.view(-1).detach().numpy()))
+
+            if use_random_normal:
+                arr = embedding[node-1, :]
+                data.extend(list(arr))
+
+            if use_pagerank:
+                data.extend([embedding[node]])
+
+            if use_eigen:
+                data.extend(list(embedding[node-1]))
+
+            if use_deepwalk:
+                data.extend(list(embedding[node-1]))
+            
             features.append(data)
-        
+
         return torch.Tensor(features)
 
     def get_target(self, classification=True):

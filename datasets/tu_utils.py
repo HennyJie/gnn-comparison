@@ -26,6 +26,12 @@ def parse_tu_data(name, raw_dir):
     edge_labels = defaultdict(list)
     node_attrs = defaultdict(list)
     edge_attrs = defaultdict(list)
+    num_nodes_map = {"MUTAG": 3371, "ENZYMES": 19580}
+    num_nodes = num_nodes_map[name]
+    nodes = np.arange(1, num_nodes+1)
+    
+    G = nx.Graph()
+    G.add_nodes_from(nodes)
 
     with open(indicator_path, "r") as f:
         for i, line in enumerate(f.readlines(), 1):
@@ -46,6 +52,8 @@ def parse_tu_data(name, raw_dir):
             graph_id = indicator[edge[0]]
 
             graph_edges[graph_id].append(edge)
+            
+            G.add_edge(edge[0], edge[1])
 
     if node_labels_path.exists():
         with open(node_labels_path, "r") as f:
@@ -113,10 +121,11 @@ def parse_tu_data(name, raw_dir):
         "node_attrs": node_attrs,
         "edge_labels": edge_labels,
         "edge_attrs": edge_attrs
-    }, num_node_labels, num_edge_labels
+    }, num_node_labels, num_edge_labels, G
 
 
-def create_graph_from_tu_data(graph_data, target, num_node_labels, num_edge_labels):
+def create_graph_from_tu_data(graph_data, target, num_node_labels, num_edge_labels, Graph_whole):
+    # Graph is the networks graph containing all nodes and edges in the dataset
     nodes = graph_data["graph_nodes"]
     edges = graph_data["graph_edges"]
 

@@ -6,6 +6,8 @@ import zipfile
 from pathlib import Path
 import networkx as nx
 from networkx import normalized_laplacian_matrix
+import torch.nn as nn
+from numpy import linalg as LA
 
 import numpy as np
 import torch
@@ -24,7 +26,7 @@ from .tu_utils import parse_tu_data, create_graph_from_tu_data
 
 class GraphDatasetManager:
     def __init__(self, kfold_class=StratifiedKFold, outer_k=10, inner_k=None, seed=42, holdout_test_size=0.1,
-                 use_node_degree=False, use_node_attrs=False, use_one=False, precompute_kron_indices=False,
+                 use_node_degree=False, use_node_attrs=False, use_one=False, use_shared=False, use_1hot=False, use_random_normal=False, use_pagerank=False, use_eigen=False, use_deepwalk=False, precompute_kron_indices=False,
                  max_reductions=10, DATA_DIR='DATA'):
 
         self.root_dir = Path(DATA_DIR) / self.name
@@ -33,8 +35,18 @@ class GraphDatasetManager:
         self.use_node_degree = use_node_degree
         self.use_node_attrs = use_node_attrs
         self.use_one = use_one
+        self.use_1hot = use_1hot
+        self.use_shared = use_shared
+        self.use_random_normal = use_random_normal
+        self.use_pagerank = use_pagerank
+        self.use_eigen = use_eigen
+        self.use_deepwalk = use_deepwalk
         self.precompute_kron_indices = precompute_kron_indices
         self.KRON_REDUCTIONS = max_reductions  # will compute indices for 10 pooling layers --> approximately 1000 nodes
+
+        self.Graph_whole = None
+        self.Graph_whole_pagerank = None
+        self.Graph_whole_eigen = None
 
         self.outer_k = outer_k
         assert (outer_k is not None and outer_k > 0) or outer_k is None
@@ -225,17 +237,44 @@ class TUDatasetManager(GraphDatasetManager):
                 z.extract(fname, self.raw_dir)
 
     def _process(self):
-        graphs_data, num_node_labels, num_edge_labels = parse_tu_data(self.name, self.raw_dir)
+        graphs_data, num_node_labels, num_edge_labels, Graph_whole = parse_tu_data(self.name, self.raw_dir) # Graph_whole contains all nodes and edges in the dataset
         targets = graphs_data.pop("graph_labels")
+
+        self.Graph_whole = Graph_whole
+
+        if self.use_pagerank:
+            self.Graph_whole_pagerank = nx.pagerank(self.Graph_whole)
+        elif self.use_eigen:
+            try:
+                self.Graph_whole_eigen = np.load("DATA/enzymes_eigenvector.npy")
+                print(self.Graph_whole_eigen.shape)
+            except:
+                adj_matrix = nx.to_numpy_array(self.Graph_whole)
+                print(adj_matrix.shape)
+                print("start computing eigen vectors")
+                w, v = LA.eig(adj_matrix)
+                indices = np.argsort(w)[::-1]
+                v = v.transpose()[indices]
+                # only save top 1000 eigenvectors
+                np.save("DATA/enzymes_eigenvector", v[:200])
+            
+            print(self.Graph_whole_eigen)
+            print(np.count_nonzero(self.Graph_whole_eigen==0))
+            embedding = np.zeros((19580, 50))
+            for i in range(19580):
+                for j in range(50):
+                    embedding[i, j] = self.Graph_whole_eigen[j, i]
+            self.Graph_whole_eigen = embedding
+            print(self.Graph_whole_eigen)
 
         # dynamically set maximum num nodes (useful if using dense batching, e.g. diffpool)
         max_num_nodes = max([len(v) for (k, v) in graphs_data['graph_nodes'].items()])
         setattr(self, 'max_num_nodes', max_num_nodes)
 
-        dataset = []
+        dataset = [] 
         for i, target in enumerate(targets, 1):
             graph_data = {k: v[i] for (k, v) in graphs_data.items()}
-            G = create_graph_from_tu_data(graph_data, target, num_node_labels, num_edge_labels)
+            G = create_graph_from_tu_data(graph_data, target, num_node_labels, num_edge_labels, Graph_whole)
 
             if self.precompute_kron_indices:
                 laplacians, v_plus_list = self._precompute_kron_indices(G)
@@ -250,8 +289,20 @@ class TUDatasetManager(GraphDatasetManager):
 
     def _to_data(self, G):
         datadict = {}
-
-        node_features = G.get_x(self.use_node_attrs, self.use_node_degree, self.use_one)
+        embedding = None
+        if self.use_1hot:
+            embedding = nn.Embedding(3371, 100)
+        elif self.use_random_normal:
+            embedding = np.random.normal(0, 1, (3371, 100))
+        elif self.use_pagerank:
+            # embedding is essentially pagerank dictionary
+            embedding = self.Graph_whole_pagerank
+        elif self.use_eigen:
+            embedding = self.Graph_whole_eigen
+        elif self.use_deepwalk:
+            embedding = self.extract_deepwalk_embeddings("DATA/mutag.embeddings")
+        
+        node_features = G.get_x(self.use_node_attrs, self.use_node_degree, self.use_one, self.use_shared, self.use_1hot, self.use_random_normal, self.use_pagerank, self.use_eigen, self.use_deepwalk, embedding=embedding)
         datadict.update(x=node_features)
 
         if G.laplacians is not None:
@@ -346,6 +397,18 @@ class TUDatasetManager(GraphDatasetManager):
     def _precompute_assignments(self):
         pass
 
+    def extract_deepwalk_embeddings(self, filename):
+        with open(filename) as f:
+            feat_data = []
+            for i, line in enumerate(f):
+                info = line.strip().split()
+                if i == 0:
+                    feat_data = np.zeros((3371, int(info[1])))
+                else:
+                    idx = int(info[0]) - 1
+                    feat_data[idx, :] = list(map(float, info[1::]))
+
+        return feat_data
 
 class NCI1(TUDatasetManager):
     name = "NCI1"
@@ -384,7 +447,7 @@ class DD(TUDatasetManager):
 
 class Enzymes(TUDatasetManager):
     name = "ENZYMES"
-    _dim_features = 21  # 18 attr + 3 labels
+    _dim_features = 21
     _dim_target = 6
     max_num_nodes = 126
 
@@ -408,3 +471,10 @@ class Collab(TUDatasetManager):
     _dim_features = 1
     _dim_target = 3
     max_num_nodes = 492
+
+
+class Mutag(TUDatasetManager):
+    name = "MUTAG"
+    _dim_features = 64
+    _dim_target = 2
+    max_num_nodes = 100
