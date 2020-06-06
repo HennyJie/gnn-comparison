@@ -47,6 +47,8 @@ class GraphDatasetManager:
         self.Graph_whole = None
         self.Graph_whole_pagerank = None
         self.Graph_whole_eigen = None
+        self.Graph_whole_embedding = None
+        self.Graph_whole_deepwalk = None
 
         self.outer_k = outer_k
         assert (outer_k is not None and outer_k > 0) or outer_k is None
@@ -78,6 +80,11 @@ class GraphDatasetManager:
             self.splits = json.load(open(splits_filename, "r"))
 
     @property
+    def init_method(self):
+        if self.use_random_normal:
+            return "random_nomral"
+
+    @property
     def num_graphs(self):
         return len(self.dataset)
 
@@ -91,10 +98,14 @@ class GraphDatasetManager:
 
     @property
     def dim_features(self):
-        if not hasattr(self, "_dim_features") or self._dim_features is None:
+        # best for feature initialization based on the current implementation
+        self._dim_features = self.dataset.data[0].x.size(1)
+
+        # if not hasattr(self, "_dim_features") or self._dim_features is None:
             # not very elegant, but it works
             # todo not general enough, we may just remove it
-            self._dim_features = self.dataset.data[0].x.size(1)
+            # self._dim_features = self.dataset.data[0].x.size(1)
+        # feature initialization
         return self._dim_features
 
     def _process(self):
@@ -246,9 +257,12 @@ class TUDatasetManager(GraphDatasetManager):
             self.Graph_whole_pagerank = nx.pagerank(self.Graph_whole)
         elif self.use_eigen:
             try:
-                self.Graph_whole_eigen = np.load("DATA/enzymes_eigenvector.npy")
+                print("{name}".format(name=self.name))
+                self.Graph_whole_eigen = np.load("DATA/{name}_eigenvector.npy".format(name=self.name))
                 print(self.Graph_whole_eigen.shape)
             except:
+                print("didn't find eigenvector npy file")
+                exit()
                 adj_matrix = nx.to_numpy_array(self.Graph_whole)
                 print(adj_matrix.shape)
                 print("start computing eigen vectors")
@@ -256,16 +270,23 @@ class TUDatasetManager(GraphDatasetManager):
                 indices = np.argsort(w)[::-1]
                 v = v.transpose()[indices]
                 # only save top 1000 eigenvectors
-                np.save("DATA/enzymes_eigenvector", v[:200])
+                np.save("DATA/{name}_eigenvector", v[:200])
             
             print(self.Graph_whole_eigen)
             print(np.count_nonzero(self.Graph_whole_eigen==0))
-            embedding = np.zeros((19580, 50))
-            for i in range(19580):
+            embedding = np.zeros(( 19502, 50))
+            for i in range( 19502):
                 for j in range(50):
                     embedding[i, j] = self.Graph_whole_eigen[j, i]
             self.Graph_whole_eigen = embedding
             print(self.Graph_whole_eigen)
+        elif self.use_1hot:
+            self.Graph_whole_embedding = nn.Embedding(self.Graph_whole.number_of_nodes(), 64)
+        elif self.use_deepwalk:
+            self.Graph_whole_deepwalk = self.extract_deepwalk_embeddings("DATA/imdb-multi.embeddings")
+        elif self.use_random_normal:
+            num_of_nodes = self.Graph_whole.number_of_nodes()
+            self.Graph_whole_embedding = np.random.normal(0, 1, (num_of_nodes, 50))
 
         # dynamically set maximum num nodes (useful if using dense batching, e.g. diffpool)
         max_num_nodes = max([len(v) for (k, v) in graphs_data['graph_nodes'].items()])
@@ -291,16 +312,16 @@ class TUDatasetManager(GraphDatasetManager):
         datadict = {}
         embedding = None
         if self.use_1hot:
-            embedding = nn.Embedding(3371, 100)
+            embedding = self.Graph_whole_embedding
         elif self.use_random_normal:
-            embedding = np.random.normal(0, 1, (3371, 100))
+            embedding = self.Graph_whole_embedding
         elif self.use_pagerank:
             # embedding is essentially pagerank dictionary
             embedding = self.Graph_whole_pagerank
         elif self.use_eigen:
             embedding = self.Graph_whole_eigen
         elif self.use_deepwalk:
-            embedding = self.extract_deepwalk_embeddings("DATA/mutag.embeddings")
+            embedding = self.Graph_whole_deepwalk
         
         node_features = G.get_x(self.use_node_attrs, self.use_node_degree, self.use_one, self.use_shared, self.use_1hot, self.use_random_normal, self.use_pagerank, self.use_eigen, self.use_deepwalk, embedding=embedding)
         datadict.update(x=node_features)
@@ -398,16 +419,18 @@ class TUDatasetManager(GraphDatasetManager):
         pass
 
     def extract_deepwalk_embeddings(self, filename):
+        print("start to load embeddings")
         with open(filename) as f:
             feat_data = []
             for i, line in enumerate(f):
                 info = line.strip().split()
                 if i == 0:
-                    feat_data = np.zeros((3371, int(info[1])))
+                    feat_data = np.zeros(( 19502, int(info[1])))
                 else:
                     idx = int(info[0]) - 1
                     feat_data[idx, :] = list(map(float, info[1::]))
-
+        
+        print("finished loading deepwalk embeddings")
         return feat_data
 
 class NCI1(TUDatasetManager):
@@ -447,14 +470,14 @@ class DD(TUDatasetManager):
 
 class Enzymes(TUDatasetManager):
     name = "ENZYMES"
-    _dim_features = 21
+    _dim_features = 20
     _dim_target = 6
     max_num_nodes = 126
 
 
 class IMDBBinary(TUDatasetManager):
     name = "IMDB-BINARY"
-    _dim_features = 1
+    _dim_features = 50
     _dim_target = 2
     max_num_nodes = 136
 
@@ -475,6 +498,6 @@ class Collab(TUDatasetManager):
 
 class Mutag(TUDatasetManager):
     name = "MUTAG"
-    _dim_features = 64
+    _dim_features = 71
     _dim_target = 2
     max_num_nodes = 100

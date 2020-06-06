@@ -26,7 +26,7 @@ def parse_tu_data(name, raw_dir):
     edge_labels = defaultdict(list)
     node_attrs = defaultdict(list)
     edge_attrs = defaultdict(list)
-    num_nodes_map = {"MUTAG": 3371, "ENZYMES": 19580}
+    num_nodes_map = {"MUTAG": 3371, "ENZYMES": 19580, "IMDB-BINARY": 19773, "IMDB-MULTI": 19502}
     num_nodes = num_nodes_map[name]
     nodes = np.arange(1, num_nodes+1)
     
