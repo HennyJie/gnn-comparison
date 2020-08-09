@@ -11,7 +11,7 @@ learning_rate:
 l2:
   - 0.
 classifier_epochs:
-  - 500
+  - 1000
 optimizer:
   - Adam
 scheduler:
@@ -24,20 +24,17 @@ early_stopper:
   -
     class: Patience
     args:
-      patience: 250
+      patience: 500
       use_loss: False
-  -
-    class: Patience
-    args:
-      patience: 250
-      use_loss: True
 shuffle:
   - True
 dim_embedding:
-  # - 32
+  - 16
+  - 32
   - 64
 num_layers:
   - 3
   # - 5
 aggregation:
   - mean
+  - sum
