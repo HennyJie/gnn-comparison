@@ -24,17 +24,17 @@ early_stopper:
   -
     class: Patience
     args:
-      patience: 500
+      patience: 100
       use_loss: False
 shuffle:
   - True
 dim_embedding:
-  - 16
+  # - 16
   - 32
   - 64
 num_layers:
   - 3
   # - 5
 aggregation:
-  - mean
+  # - mean
   - sum

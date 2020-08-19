@@ -274,8 +274,8 @@ class TUDatasetManager(GraphDatasetManager):
             
             print(self.Graph_whole_eigen)
             print(np.count_nonzero(self.Graph_whole_eigen==0))
-            embedding = np.zeros(( 19502, 50))
-            for i in range( 19502):
+            embedding = np.zeros((43471, 50))
+            for i in range(43471):
                 for j in range(50):
                     embedding[i, j] = self.Graph_whole_eigen[j, i]
             self.Graph_whole_eigen = embedding
@@ -283,7 +283,7 @@ class TUDatasetManager(GraphDatasetManager):
         elif self.use_1hot:
             self.Graph_whole_embedding = nn.Embedding(self.Graph_whole.number_of_nodes(), 64)
         elif self.use_deepwalk:
-            self.Graph_whole_deepwalk = self.extract_deepwalk_embeddings("DATA/imdb-multi.embeddings")
+            self.Graph_whole_deepwalk = self.extract_deepwalk_embeddings("DATA/proteins.embeddings")
         elif self.use_random_normal:
             num_of_nodes = self.Graph_whole.number_of_nodes()
             self.Graph_whole_embedding = np.random.normal(0, 1, (num_of_nodes, 50))
@@ -425,7 +425,7 @@ class TUDatasetManager(GraphDatasetManager):
             for i, line in enumerate(f):
                 info = line.strip().split()
                 if i == 0:
-                    feat_data = np.zeros(( 19502, int(info[1])))
+                    feat_data = np.zeros((43471, int(info[1])))
                 else:
                     idx = int(info[0]) - 1
                     feat_data[idx, :] = list(map(float, info[1::]))

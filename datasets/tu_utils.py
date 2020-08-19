@@ -31,7 +31,8 @@ def parse_tu_data(name, raw_dir):
         "ENZYMES": 19580, 
         "IMDB-BINARY": 19773, 
         "IMDB-MULTI": 19502, 
-        "DD": 334925
+        "DD": 334925,
+        "PROTEINS_full": 43471
     }
     num_nodes = num_nodes_map[name]
     nodes = np.arange(1, num_nodes+1)

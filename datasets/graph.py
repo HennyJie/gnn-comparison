@@ -63,7 +63,7 @@ class Graph(nx.Graph):
                 data.extend(list(arr))
 
             if use_pagerank:
-                data.extend([embedding[node]])
+                data.extend([embedding[node]] * 50)
 
             if use_eigen:
                 data.extend(list(embedding[node-1]))
