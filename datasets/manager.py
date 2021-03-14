@@ -258,19 +258,19 @@ class TUDatasetManager(GraphDatasetManager):
         elif self.use_eigen:
             try:
                 print("{name}".format(name=self.name))
-                self.Graph_whole_eigen = np.load("DATA/{name}_eigenvector.npy".format(name=self.name))
+                self.Graph_whole_eigen = np.load("DATA/{name}_eigenvector_degree_normalized.npy".format(name=self.name))
                 print(self.Graph_whole_eigen.shape)
             except:
-                print("didn't find eigenvector npy file")
-                exit()
                 adj_matrix = nx.to_numpy_array(self.Graph_whole)
-                print(adj_matrix.shape)
+                # normalize adjacency matrix with degree
+                sum_of_rows = adj_matrix.sum(axis=1)
+                normalized_adj_matrix = adj_matrix / sum_of_rows[:, None]
                 print("start computing eigen vectors")
-                w, v = LA.eig(adj_matrix)
+                w, v = LA.eig(normalized_adj_matrix)
                 indices = np.argsort(w)[::-1]
                 v = v.transpose()[indices]
                 # only save top 1000 eigenvectors
-                np.save("DATA/{name}_eigenvector", v[:200])
+                np.save("DATA/{name}_eigenvector_degree_normalized", v[:200])
             
             print(self.Graph_whole_eigen)
             print(np.count_nonzero(self.Graph_whole_eigen==0))
