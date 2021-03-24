@@ -161,3 +161,15 @@ def create_graph_from_tu_data(graph_data, target, num_node_labels, num_edge_labe
         G.add_edge(n1, n2, label=label, attrs=attrs)
 
     return G
+
+def get_dataset_node_num(dataset_name):
+    num_nodes_map = {
+        "MUTAG": 3371,
+        "ENZYMES": 19580, 
+        "IMDB-BINARY": 19773, 
+        "IMDB-MULTI": 19502, 
+        "DD": 334925,
+        "PROTEINS_full": 43471
+    }
+
+    return num_nodes_map[dataset_name]

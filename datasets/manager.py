@@ -21,7 +21,7 @@ from .data import Data
 from .dataloader import DataLoader
 from .dataset import GraphDataset, GraphDatasetSubset
 from .sampler import RandomSampler
-from .tu_utils import parse_tu_data, create_graph_from_tu_data
+from .tu_utils import parse_tu_data, create_graph_from_tu_data, get_dataset_node_num
 
 
 class GraphDatasetManager:
@@ -252,6 +252,7 @@ class TUDatasetManager(GraphDatasetManager):
         targets = graphs_data.pop("graph_labels")
 
         self.Graph_whole = Graph_whole
+        print("in _process")
 
         if self.use_pagerank:
             self.Graph_whole_pagerank = nx.pagerank(self.Graph_whole)
@@ -274,8 +275,9 @@ class TUDatasetManager(GraphDatasetManager):
             
             print(self.Graph_whole_eigen)
             print(np.count_nonzero(self.Graph_whole_eigen==0))
-            embedding = np.zeros((43471, 50))
-            for i in range(43471):
+            node_num = get_dataset_node_num(self.name)
+            embedding = np.zeros((node_num, 50))
+            for i in range(node_num):
                 for j in range(50):
                     embedding[i, j] = self.Graph_whole_eigen[j, i]
             self.Graph_whole_eigen = embedding
@@ -420,12 +422,13 @@ class TUDatasetManager(GraphDatasetManager):
 
     def extract_deepwalk_embeddings(self, filename):
         print("start to load embeddings")
+        node_num = get_dataset_node_num(self.name)
         with open(filename) as f:
             feat_data = []
             for i, line in enumerate(f):
                 info = line.strip().split()
                 if i == 0:
-                    feat_data = np.zeros((43471, int(info[1])))
+                    feat_data = np.zeros((node_num, int(info[1])))
                 else:
                     idx = int(info[0]) - 1
                     feat_data[idx, :] = list(map(float, info[1::]))
