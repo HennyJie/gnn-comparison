@@ -262,10 +262,15 @@ class TUDatasetManager(GraphDatasetManager):
                 self.Graph_whole_eigen = np.load("DATA/{name}_eigenvector_degree_normalized.npy".format(name=self.name))
                 print(self.Graph_whole_eigen.shape)
             except:
+                num_node = get_dataset_node_num(self.name)
                 adj_matrix = nx.to_numpy_array(self.Graph_whole)
                 # normalize adjacency matrix with degree
                 sum_of_rows = adj_matrix.sum(axis=1)
-                normalized_adj_matrix = adj_matrix / sum_of_rows[:, None]
+                normalized_adj_matrix = np.zeros((num_node, num_node))
+                # deal with edge case of disconnected node:
+                for i in range(num_node):
+                    if sum_of_rows[i] != 0:
+                        normalized_adj_matrix[i, :] = adj_matrix[i, :] / sum_of_rows[i, None]
                 print("start computing eigen vectors")
                 w, v = LA.eig(normalized_adj_matrix)
                 indices = np.argsort(w)[::-1]
