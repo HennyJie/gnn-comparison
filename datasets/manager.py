@@ -276,7 +276,8 @@ class TUDatasetManager(GraphDatasetManager):
                 indices = np.argsort(w)[::-1]
                 v = v.transpose()[indices]
                 # only save top 1000 eigenvectors
-                np.save("DATA/{name}_eigenvector_degree_normalized", v[:200])
+                np.save("DATA/{name}_eigenvector_degree_normalized".format(name=self.name), v[:200])
+                self.Graph_whole_eigen = v
             
             print(self.Graph_whole_eigen)
             print(np.count_nonzero(self.Graph_whole_eigen==0))
