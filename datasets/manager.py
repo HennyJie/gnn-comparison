@@ -357,9 +357,10 @@ class TUDatasetManager(GraphDatasetManager):
         v_plus_list = []  # reduction matrices
 
         X = G.get_x(self.use_node_attrs, self.use_node_degree, self.use_one)
+        print(X.shape)
         lap = torch.Tensor(normalized_laplacian_matrix(G).todense())  # I - D^{-1/2}AD^{-1/2}
         # print(X.shape, lap.shape)
-
+        
         laplacians.append(lap)
 
         for _ in range(self.KRON_REDUCTIONS):
